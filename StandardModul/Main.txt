@@ -1,0 +1,41 @@
+Option Explicit
+
+Public Const PRODUCTION_ As String = "生産"
+Public Const PROHIBITION_ As String = "前倒し禁止"
+Public Const CAPTURE_ As String = "取込時"
+Public Const FRON_LOAD As String = "前倒し"
+Public Const CHANGE_LINE As String = "ライン変更"
+Public Const TOTAL_DIFF As String = "累計比較"
+Public Const LINE_ As String = "ライン"
+Public Const CAP_DIFF As String = "取込時(累計)"
+Public Const PROC_DIFF As String = "生産(累計)"
+
+Private WeeklyModel As WeeklyModel
+Private Products As Products
+
+Public Type ProcData
+    sum As Long
+    cd As String
+    name As String
+    batch As String
+    line As Variant
+End Type
+
+Sub 品目テーブル作表()
+    Dim t As Double: t = Timer
+    Dim period As Variant
+    period = WeeklyView.getDays
+    
+    Dim proc_data As ProcData
+    proc_data = TableConfig.GetProcData
+
+    Set WeeklyModel = New WeeklyModel
+    WeeklyModel.GetWeeks period
+    
+    Set Products = New Products
+    Products.GetProcSummary proc_data
+    
+    WeeklyView.ShowResult WeeklyModel, Products
+    WeeklyView.Range("A1").Select
+    Debug.Print Timer - t
+End Sub

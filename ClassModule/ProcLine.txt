@@ -1,0 +1,11 @@
+Option Explicit
+
+Private my_name As String
+
+Public Property Let setName(ByVal name As String)
+    my_name = name
+End Property
+
+Public Property Get getName()
+    getName = my_name
+End Property

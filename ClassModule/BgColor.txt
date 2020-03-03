@@ -1,0 +1,48 @@
+Option Explicit
+ 
+Private my_key As String
+Private my_firstRow As Long
+Private my_firstCol As Long
+Private my_lastRow As Long
+Private my_lastCol As Long
+
+Public Property Let setKey(ByVal key As String)
+    my_key = key
+End Property
+
+Public Property Let setFirstRow(ByVal firstRow As Long)
+    my_firstRow = firstRow
+End Property
+
+Public Property Let setFirstCol(ByVal firstCol As Long)
+    my_firstCol = firstCol
+End Property
+
+Public Property Let setLastRow(ByVal lastRow As Long)
+    my_lastRow = lastRow
+End Property
+
+Public Property Let setLastCol(ByVal lastCol As Long)
+    my_lastCol = lastCol
+End Property
+
+Public Property Get getKey() As String
+    getKey = my_key
+End Property
+
+Public Property Get getFirstRow() As Long
+    getFirstRow = my_firstRow
+End Property
+
+Public Property Get getFirstCol() As Long
+    getFirstCol = my_firstCol
+End Property
+
+Public Property Get getLastRow() As Long
+    getLastRow = my_lastRow
+End Property
+
+Public Property Get getLastCol() As Long
+    getLastCol = my_lastCol
+End Property
+

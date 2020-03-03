@@ -1,0 +1,17 @@
+Option Explicit
+
+Private Const PROC_SUM As String = "品目数"
+Private Const PROC_CD As String = "品目CD"
+Private Const PROC_NAME As String = "品目名"
+Private Const PROC_BATCH As String = "バッチ換算数"
+Private Const PROC_LINE As String = "ライン"
+
+Public Function GetProcData() As ProcData
+    Dim proc_data As ProcData
+    proc_data.sum = Me.Range(PROC_SUM)
+    proc_data.cd = Me.Range(PROC_CD)
+    proc_data.name = Me.Range(PROC_NAME)
+    proc_data.batch = Me.Range(PROC_BATCH)
+    proc_data.line = Split(Me.Range(PROC_LINE), ",")
+    GetProcData = proc_data
+End Function

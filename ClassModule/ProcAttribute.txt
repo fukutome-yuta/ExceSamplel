@@ -1,0 +1,38 @@
+Rem Attribute VBA_ModuleType=VBAClassModule
+Option VBASupport 1
+Option ClassModule
+Option Explicit
+
+Private my_name As String
+Private my_lines As Collection
+
+Private Sub Class_Initialize()
+    Set my_lines = New Collection
+End Sub
+
+Public Property Let setName(ByVal name As String)
+    my_name = name
+End Property
+
+Public Property Let setLines(ByVal lineNames As Variant)
+    If VarType(lineNames) = vbString Then
+        Dim procLine As procLine: Set procLine = New procLine
+        procLine.setName = lineNames
+        my_lines.Add Item:=procLine, key:=lineNames
+    Else
+        Dim line As Variant
+        For Each line In lineNames
+            Dim proc As procLine: Set proc = New procLine
+            proc.setName = line
+            my_lines.Add Item:=proc, key:=line
+        Next
+    End If
+End Property
+
+Public Property Get getName() As String
+    getName = my_name
+End Property
+
+Public Property Get getLines() As Collection
+    Set getLines = my_lines
+End Property

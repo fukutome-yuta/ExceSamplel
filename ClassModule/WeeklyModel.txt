@@ -1,0 +1,32 @@
+Option Explicit
+
+Private my_days As Collection
+Private my_weekDays As Collection
+
+Private Sub Class_Initialize()
+    Set my_days = New Collection
+    Set my_weekDays = New Collection
+End Sub
+
+Public Sub GetWeeks(ByVal period As Variant)
+    Dim period_length As Long
+    period_length = DateDiff("d", period(0), period(1))
+    
+    Dim i As Long
+    Dim d As Date
+    For i = 0 To period_length
+        d = DateAdd("d", i, period(0))
+        If weekDay(d) = vbMonday Then
+            my_days.Add d
+            my_weekDays.Add Format(d, "aaa")
+        End If
+    Next
+End Sub
+
+Public Property Get getDays() As Collection
+    Set getDays = my_days
+End Property
+
+Public Property Get getWeekDays() As Collection
+    Set getWeekDays = my_weekDays
+End Property

@@ -1,0 +1,475 @@
+Option Explicit
+
+Private Const TOTAL_LINE As String = "ライン合計"
+
+Private Const START_ As String = "startDay"
+Private Const END_ As String = "endDay"
+Private Const CLEAR As String = "クリア"
+Private Const PERIOD_RANGE As String = "期間"
+
+Private Const BASE_ROW As Long = 8
+Private Const DAYS_COLUMN As Long = 10
+Private Const TABLE_COLUMN As Long = 10
+Private Const FOREMAST_ As Long = 2
+Private Const PROC_SUMMARY As Long = 3
+Private Const BATCH_COL As Long = 6
+Private Const ATTR_COL As Long = 7
+Private Const PROP_COL As Long = 8
+
+Private Type baseRange
+    firstRow As Long
+    firstCol As Long
+    lastRow As Long
+    lastCol As Long
+End Type
+
+Private Type procSummary
+    formastCol As Long
+    cdNameCol As Long
+    batchCol As Long
+End Type
+
+Private Type bgColorType
+    bgColors As Collection
+    color As MsoColorType
+End Type
+
+Public Function getDays() As Variant
+    Dim period As Variant
+
+    With Me
+        period = Array(.Range(START_).Value, .Range(END_).Value)
+    End With
+
+    Dim d As Variant
+    For Each d In period
+        If Not IsDate(d) Then
+            MsgBox "正しい日付を入力してください"
+            End
+        End If
+    Next
+
+    getDays = period
+End Function
+
+Private Sub SetRange(ByRef baseRange As baseRange, firstRow As Long, ByVal firstCol As Long, ByVal lastRow As Long, ByVal lastCol As Long)
+    With baseRange
+        .firstRow = firstRow
+        .firstCol = firstCol
+        .lastRow = lastRow
+        .lastCol = lastCol
+    End With
+End Sub
+
+Public Sub ShowResult(ByVal WeeklyModel As WeeklyModel, ByVal Products As Products)
+    Application.ScreenUpdating = False
+
+    Call Init
+    
+    Dim last_column As Long: last_column = DAYS_COLUMN + WeeklyModel.getDays.Count - 1
+    Dim baseRange As baseRange
+    SetRange baseRange, BASE_ROW, DAYS_COLUMN, BASE_ROW + 1, last_column
+
+    SetPeriodTable WeeklyModel, baseRange
+    
+    ShowProcTable baseRange, last_column, Products
+    
+    SetRange baseRange, baseRange.lastRow + 3, DAYS_COLUMN, baseRange.lastRow + 4, last_column
+    SetPeriodTable WeeklyModel, baseRange
+
+    Application.ScreenUpdating = True
+End Sub
+
+Private Sub ShowProcTable(ByRef baseRange As baseRange, ByVal last_column As Long, ByVal Products As Products)
+    SetRange baseRange, baseRange.lastRow + 1, ATTR_COL, 0, last_column
+    Dim procBaseRow As Long: procBaseRow = baseRange.firstRow
+
+    Dim procSum As procSummary
+    With procSum
+        .formastCol = FOREMAST_
+        .cdNameCol = PROC_SUMMARY
+        .batchCol = BATCH_COL
+    End With
+
+    ' 週次シート取込時行 背景緑
+    Dim capBgColorGroup As bgColorType
+    PrepareBgColors capBgColorGroup, RGB(102, 255, 51)
+
+    Dim attrNames As Collection: Set attrNames = New Collection
+    Dim attrLines As Collection: Set attrLines = New Collection
+    Dim procAttrMerge As Dictionary: Set procAttrMerge = New Dictionary
+    Dim proc As Product
+    For Each proc In Products.getProducts
+        ' 週次シート取込時行 背景緑
+        Dim capBgColor As BgColor: Set capBgColor = New BgColor
+        SetRange baseRange, baseRange.firstRow, ATTR_COL, baseRange.firstRow, baseRange.lastCol
+        SetBgColorClass capBgColor, CAPTURE_, baseRange
+
+        SetAttributes proc, attrNames, attrLines, procAttrMerge, capBgColor, capBgColorGroup.bgColors, baseRange
+
+        SetProcSummary baseRange, procSum, proc
+
+        SetRange baseRange, baseRange.firstRow, ATTR_COL, baseRange.lastRow, PROP_COL
+        SetTableFreame baseRange, addCol:=1
+
+        SetRange baseRange, baseRange.firstRow, TABLE_COLUMN, baseRange.lastRow, last_column
+        SetTableFreame baseRange
+        
+        SetRange baseRange, baseRange.lastRow + 1, baseRange.firstCol, baseRange.lastRow, last_column
+    Next
+
+    SetRange baseRange, procBaseRow, ATTR_COL, baseRange.lastRow, PROP_COL
+    ShowAttr baseRange, attrNames, attrLines, procAttrMerge
+
+        Dim lineBaseRow As Long: lineBaseRow = baseRange.lastRow + 1
+    SetRange baseRange, lineBaseRow, PROP_COL, 0, last_column
+    
+    Dim lineNames As Collection: Set lineNames = New Collection
+    Dim lineAttr As Collection: Set lineAttr = New Collection
+    Dim lineNameMerge As Dictionary: Set lineNameMerge = New Dictionary
+    
+    Dim pLineSummary As ProcLineSummary
+    For Each pLineSummary In Products.getLines
+        ' 週次シート取込時行 背景緑
+        Dim lineBgColor As BgColor: Set lineBgColor = New BgColor
+        SetRange baseRange, baseRange.firstRow, PROP_COL, baseRange.firstRow, baseRange.lastCol
+        SetBgColorClass lineBgColor, CAPTURE_, baseRange
+
+        SetLineAttr pLineSummary, lineNames, lineAttr, lineNameMerge, lineBgColor, capBgColorGroup.bgColors, baseRange
+        
+        SetRange baseRange, baseRange.firstRow, ATTR_COL, baseRange.lastRow, PROP_COL
+        SetTableFreame baseRange, addCol:=1
+
+        SetRange baseRange, baseRange.firstRow, TABLE_COLUMN, baseRange.lastRow, last_column
+        SetTableFreame baseRange
+        
+        SetRange baseRange, baseRange.lastRow + 1, baseRange.firstCol, baseRange.lastRow, last_column
+    Next
+
+    SetRange baseRange, lineBaseRow, procSum.formastCol, baseRange.lastRow, procSum.batchCol
+    SetLineSummary baseRange
+
+    SetRange baseRange, lineBaseRow, ATTR_COL, baseRange.lastRow, PROP_COL
+    ShowAttr baseRange, lineNames, lineAttr, lineNameMerge
+
+    ' 週次シート取込時行 背景緑セット
+    ShowBgColor capBgColorGroup.bgColors, capBgColorGroup.color
+End Sub
+
+Private Sub PrepareBgColors(ByRef bgColorGroup As bgColorType, color As MsoColorType)
+    Set bgColorGroup.bgColors = New Collection
+    bgColorGroup.color = color
+End Sub
+
+Private Sub SetBgColorClass(ByRef bgColorClass As BgColor, ByVal key As String, ByRef baseRange As baseRange)
+    With bgColorClass
+        .setKey = key
+        .setFirstRow = baseRange.firstRow
+        .setFirstCol = baseRange.firstCol
+        .setLastCol = baseRange.lastCol
+    End With
+End Sub
+
+Private Sub Init()
+    With Me
+        With .Range(PERIOD_RANGE)
+            .ClearContents
+            .Borders.LineStyle = False
+        End With
+        With .Range(CLEAR)
+            .ClearContents
+            .UnMerge
+            .Borders.LineStyle = False
+            .Interior.Pattern = xlNone
+        End With
+    End With
+End Sub
+
+Private Sub SetPeriodTable(ByVal WeeklyModel As WeeklyModel, ByRef baseRange As baseRange)
+    Dim daysRange As Range: Set daysRange = Me.Range(Cells(baseRange.firstRow, baseRange.firstCol), Cells(baseRange.firstRow, baseRange.lastCol))
+    Dim weekDaysRange As Range: Set weekDaysRange = Me.Range(Cells(baseRange.lastRow, baseRange.firstCol), Cells(baseRange.lastRow, baseRange.lastCol))
+    Dim periodRange As Range: Set periodRange = Me.Range(Cells(baseRange.firstRow, baseRange.firstCol), Cells(baseRange.lastRow, baseRange.lastCol))
+
+    daysRange.NumberFormatLocal = "m/d"
+    
+    With daysRange
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    With weekDaysRange
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+    End With
+    
+    OuterFrame periodRange, 3, True, False
+    
+    daysRange.Value = CollectionToRow(WeeklyModel.getDays)
+    weekDaysRange.Value = CollectionToRow(WeeklyModel.getWeekDays)
+End Sub
+
+Private Sub SetAttributes(ByVal Product As Product, ByRef attrNames As Collection, ByRef attrLines As Collection, ByRef procAttrMerge As Dictionary, ByRef objBgColor As BgColor, ByRef bgColors As Collection, ByRef baseRange As baseRange)
+    Dim attrs As Collection: Set attrs = Product.getAttributes
+    Dim names As Variant: names = Array(PRODUCTION_, PROHIBITION_, CAPTURE_, FRON_LOAD, CHANGE_LINE, TOTAL_DIFF)
+    Dim name As Variant
+    Dim rowCount As Long: rowCount = 0
+    For Each name In names
+        Dim pAttr As ProcAttribute: Set pAttr = attrs(name)
+        Dim lines As Collection
+        Set lines = pAttr.getLines
+        Dim pLine As procLine
+        Dim i As Long: i = 1
+        For Each pLine In lines
+            If i = 1 Then
+                attrNames.Add pAttr.getName
+                procAttrMerge.Add attrNames.Count, lines.Count
+                If name = objBgColor.getKey Then
+                    With objBgColor
+                        .setFirstRow = baseRange.firstRow + rowCount
+                        .setLastRow = .getFirstRow + lines.Count - 1
+                    End With
+                    bgColors.Add objBgColor
+                End If
+            Else
+                attrNames.Add ""
+            End If
+            attrLines.Add pLine.getName
+            i = i + 1
+            rowCount = rowCount + 1
+        Next
+    Next
+    baseRange.lastRow = baseRange.firstRow + rowCount - 1
+End Sub
+
+Private Sub SetProcSummary(ByRef baseRange As baseRange, ByRef procSum As procSummary, ByVal Product As Product)
+    With baseRange
+        Dim formast As Range: Set formast = Me.Range(Cells(.firstRow, procSum.formastCol), Cells(.lastRow, procSum.formastCol))
+        Dim procInfo As Range: Set procInfo = Me.Range(Cells(.firstRow, procSum.cdNameCol), Cells(.lastRow, procSum.batchCol))
+        Dim summary As Range: Set summary = Me.Range(Cells(.firstRow, procSum.formastCol), Cells(.lastRow, procSum.batchCol))
+    End With
+    OuterFrame summary, 3, False, True
+    OuterFrame formast, 3, False, True
+    OuterFrame procInfo, 3, False, True
+    With Me.Cells(baseRange.firstRow, PROC_SUMMARY)
+        .Value = Product.getCd
+        .NumberFormatLocal = "0_ "
+        .HorizontalAlignment = xlLeft
+    End With
+    Me.Cells(baseRange.firstRow + 1, procSum.cdNameCol).Value = Product.getName
+    With Me.Cells(baseRange.firstRow, procSum.batchCol)
+        .Value = Product.getBatch
+        .HorizontalAlignment = xlRight
+    End With
+End Sub
+
+Private Sub SetTableFreame(ByRef baseRange As baseRange, Optional addRow As Long = 0, Optional addCol As Long = 0)
+    With baseRange
+        Dim freame As Range: Set freame = Me.Range(Cells(.firstRow, .firstCol), Cells(.lastRow, .lastCol).Offset(addRow, addCol))
+    End With
+    OuterFrame freame, 3, True, False
+End Sub
+
+Private Sub SetTableBody(ByRef baseRange As baseRange)
+    Dim tableBody As Range: Set tableBody = Me.Range(Cells(baseRow, TABLE_COLUMN), Cells(lastRow, lastColumn))
+    OuterFrame tableBody, 3, True, False
+End Sub
+
+Private Sub ShowAttr(ByRef baseRange As baseRange, ByVal attrNames As Collection, ByVal attrLines As Collection, ByVal procAttrMerge As Dictionary)
+    With baseRange
+        Dim attr As Range: Set attr = Me.Range(Cells(.firstRow, .firstCol), Cells(.lastRow, .firstCol))
+        Dim prop As Range: Set prop = Me.Range(Cells(.firstRow, .lastCol), Cells(.lastRow, .lastCol))
+        ColumnMerge .firstRow, attr, procAttrMerge
+    End With
+    RowMerge prop, 1
+    attr.Value = CollectionToColumn(attrNames)
+    prop.Value = CollectionToColumn(attrLines)
+End Sub
+
+Private Sub SetLineAttr(ByVal pLineSummary As ProcLineSummary, ByRef lineNames As Collection, ByRef lineAttr As Collection, ByRef lineNameMerge As Dictionary, ByRef objBgColor As BgColor, ByRef bgColors As Collection, ByRef baseRange As baseRange)
+    Dim names As Variant: names = Array(CAPTURE_, FRON_LOAD, CHANGE_LINE, PRODUCTION_)
+    Dim name As Variant
+    Dim lines As Collection: Set lines = pLineSummary.getLines
+    Dim rowCount As Long: rowCount = 0
+    Dim i As Long: i = 1
+    For Each name In names
+        Dim pLine As procLine: Set pLine = lines(name)
+        If i = 1 Then
+            lineNames.Add pLineSummary.getName
+            lineNameMerge.Add lineNames.Count, lines.Count
+            If name = objBgColor.getKey Then
+                With objBgColor
+                    .setFirstRow = baseRange.firstRow + rowCount
+                    .setLastRow = .getFirstRow
+                End With
+                bgColors.Add objBgColor
+            End If
+        Else
+            lineNames.Add ""
+        End If
+        lineAttr.Add pLine.getName
+        i = i + 1
+        rowCount = rowCount + 1
+    Next
+    baseRange.lastRow = baseRange.firstRow + rowCount - 1
+End Sub
+
+Private Sub SetLineSummary(ByRef baseRange As baseRange)
+    With baseRange
+        Dim summary As Range: Set summary = Me.Range(Cells(.firstRow, .firstCol), Cells(.lastRow, .lastCol))
+    End With
+
+    OuterFrame summary, 3, False, True
+
+    With Me.Cells(baseRange.firstRow, baseRange.firstCol)
+        .Value = TOTAL_LINE
+        .HorizontalAlignment = xlLeft
+    End With
+End Sub
+
+Private Function CollectionToRow(ByVal col As Collection) As Variant
+    Dim returnRow As Variant
+    ReDim returnRow(col.Count - 1)
+    Dim i As Long
+    For i = 0 To col.Count - 1
+        returnRow(i) = col.Item(i + 1)
+    Next
+    CollectionToRow = returnRow
+End Function
+
+Private Function CollectionToColumn(ByVal col As Collection) As Variant
+   Dim returnColumn As Variant
+   ReDim returnColumn(col.Count - 1, 0)
+   Dim i As Long
+   For i = 0 To col.Count - 1
+       returnColumn(i, 0) = col.Item(i + 1)
+   Next
+   CollectionToColumn = returnColumn
+End Function
+
+Private Function SetRangeAddress(ByVal unionRangeAddress As String, ByVal rangeAddress As String, ByRef addressCollection As Collection) As String
+    If unionRangeAddress = "" Then
+        SetRangeAddress = rangeAddress
+    Else
+        Dim tmpRangeAddress As String
+        tmpRangeAddress = unionRangeAddress & "," & rangeAddress
+        If 255 < Len(tmpRangeAddress) Then
+            addressCollection.Add unionRangeAddress
+            SetRangeAddress = rangeAddress
+        Else
+            SetRangeAddress = tmpRangeAddress
+        End If
+    End If
+End Function
+
+Private Sub RowMerge(TargetRange As Range, ByVal move As Long)
+    Dim addressCollection As Collection: Set addressCollection = New Collection
+    Dim unionRangeAddress As String
+    Dim targetRow As Range
+
+    For Each targetRow In TargetRange
+        Dim rangeAddress As String: rangeAddress = Range(targetRow, targetRow.Offset(0, move)).Address
+        unionRangeAddress = SetRangeAddress(unionRangeAddress, rangeAddress, addressCollection)
+    Next
+
+    addressCollection.Add unionRangeAddress
+
+    Dim strAddress As Variant
+    For Each strAddress In addressCollection
+        Me.Range(strAddress).Select
+        With Selection
+            .Merge
+            .HorizontalAlignment = xlLeft
+        End With
+    Next
+End Sub
+
+Private Sub ColumnMerge(ByVal baseRow As Long, TargetRange As Range, ByVal procAttrMerge As Dictionary)
+    Dim addressCollection As Collection: Set addressCollection = New Collection
+    Dim unionRangeAddress As String
+    Dim attr As Variant
+    For Each attr In procAttrMerge
+        Dim topCell As Long: topCell = baseRow + attr - 1
+        Dim bottomCell As Long: bottomCell = topCell + procAttrMerge(attr) - 1
+        Dim rangeAddress As String: rangeAddress = Range(Cells(topCell, TargetRange.Column), Cells(bottomCell, TargetRange.Column)).Address
+        unionRangeAddress = SetRangeAddress(unionRangeAddress, rangeAddress, addressCollection)
+    Next
+
+    addressCollection.Add unionRangeAddress
+
+    Dim strAddress As Variant
+    For Each strAddress In addressCollection
+        Me.Range(strAddress).Select
+        With Selection
+            .Merge
+            .HorizontalAlignment = xlLeft
+            .VerticalAlignment = xlTop
+        End With
+    Next
+End Sub
+
+Private Sub ShowBgColor(ByRef bgColors As Collection, ByVal color As MsoColorType)
+    Dim addressCollection As Collection: Set addressCollection = New Collection
+    Dim unionRangeAddress As String
+
+    Dim tmpBgColor As BgColor: Set tmpBgColor = New BgColor
+    For Each tmpBgColor In bgColors
+        Dim rangeAddress As String: rangeAddress = Range(Cells(tmpBgColor.getFirstRow, tmpBgColor.getFirstCol), Cells(tmpBgColor.getLastRow, tmpBgColor.getLastCol)).Address
+        unionRangeAddress = SetRangeAddress(unionRangeAddress, rangeAddress, addressCollection)
+    Next
+
+    addressCollection.Add unionRangeAddress
+
+    Dim strAddress As Variant
+    For Each strAddress In addressCollection
+        Me.Range(strAddress).Select
+        With Selection
+            .Interior.color = color
+        End With
+    Next
+End Sub
+
+Private Sub OuterFrame(table As Range, Optional style As Long = 2, Optional insideLine As Boolean = True, Optional backWhite As Boolean = False)
+    Dim borderStyle As Long
+    Select Case style
+        Case 1
+            borderStyle = xlHairline
+        Case 2
+            borderStyle = xlThin
+        Case 3
+            borderStyle = xlMedium
+        Case 4
+            borderStyle = xlThick
+        Case Else
+            borderStyle = style
+    End Select
+    
+    With table
+        .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+        With .Borders(xlEdgeLeft)
+            .LineStyle = xlContinuous
+            .Weight = borderStyle
+        End With
+        With .Borders(xlEdgeTop)
+            .LineStyle = xlContinuous
+            .Weight = borderStyle
+        End With
+        With .Borders(xlEdgeBottom)
+            .LineStyle = xlContinuous
+            .Weight = borderStyle
+        End With
+        With .Borders(xlEdgeRight)
+            .LineStyle = xlContinuous
+            .Weight = borderStyle
+        End With
+        If insideLine Then
+            .Borders(xlInsideVertical).LineStyle = xlContinuous
+            .Borders(xlInsideHorizontal).LineStyle = xlContinuous
+        Else
+            .Borders(xlInsideVertical).LineStyle = xlNone
+            .Borders(xlInsideHorizontal).LineStyle = xlNone
+        End If
+        If backWhite Then
+            .Interior.color = vbWhite
+        End If
+    End With
+End Sub

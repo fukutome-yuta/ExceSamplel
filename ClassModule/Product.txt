@@ -1,0 +1,47 @@
+Option Explicit
+
+Option Base 0
+
+Private my_cd As String
+Private my_name As String
+Private my_batch As String
+Private my_attributes As Collection
+
+Private Sub Class_Initialize()
+    Set my_attributes = New Collection
+End Sub
+
+Private Sub SetAttriburte(ByVal attrName As String, ByVal lineName As Variant)
+    Dim procAttr As ProcAttribute: Set procAttr = New ProcAttribute
+    procAttr.setName = attrName
+    procAttr.setLines = lineName
+    my_attributes.Add Item:=procAttr, key:=attrName
+End Sub
+
+Public Sub SetItem(ByRef proc_data As ProcData)
+    my_cd = proc_data.cd
+    my_name = proc_data.name
+    my_batch = proc_data.batch
+    SetAttriburte PRODUCTION_, proc_data.line
+    SetAttriburte PROHIBITION_, LINE_
+    SetAttriburte CAPTURE_, proc_data.line
+    SetAttriburte FRON_LOAD, proc_data.line
+    SetAttriburte CHANGE_LINE, proc_data.line
+    SetAttriburte TOTAL_DIFF, Array(CAP_DIFF, PROC_DIFF)
+End Sub
+
+Public Property Get getCd() As String
+    getCd = my_cd
+End Property
+
+Public Property Get getName() As String
+    getName = my_name
+End Property
+
+Public Property Get getBatch() As String
+    getBatch = my_batch
+End Property
+
+Public Property Get getAttributes() As Collection
+    Set getAttributes = my_attributes
+End Property

@@ -1,0 +1,50 @@
+Option Explicit
+
+Private productCollection As Collection
+Private lineCollection As Collection
+
+Private Sub Class_Initialize()
+    Set productCollection = New Collection
+    Set lineCollection = New Collection
+End Sub
+
+Private Sub InitProc(ByVal sum As Long)
+    Dim i As Long
+    For i = 1 To sum
+        Dim proc As Product: Set proc = New Product
+        productCollection.Add proc
+    Next
+End Sub
+
+Private Sub SetLineSummary(ByVal lineName As String, ByVal lineItems As Variant)
+    Dim procLine As ProcLineSummary: Set procLine = New ProcLineSummary
+    procLine.setName = lineName
+    procLine.setLines = lineItems
+    lineCollection.Add Item:=procLine, key:=lineName
+End Sub
+
+Private Sub SetLineItem(ByVal lineNames As Variant)
+    Dim line As Variant
+    For Each line In lineNames
+        SetLineSummary line, Array(CAPTURE_, FRON_LOAD, CHANGE_LINE, PRODUCTION_)
+    Next
+End Sub
+
+Public Sub GetProcSummary(ByRef proc_data As ProcData)
+    Call InitProc(proc_data.sum)
+    Call SetLineItem(proc_data.line)
+
+    Dim proc As Product
+    For Each proc In productCollection
+        proc.SetItem proc_data
+    Next
+End Sub
+
+Public Property Get getProducts() As Collection
+    Set getProducts = productCollection
+End Property
+
+Public Property Get getLines() As Collection
+    Set getLines = lineCollection
+End Property
+
